@@ -17,5 +17,9 @@
       "direction": "out",
       "name": "$return"
     }
-  ]
+  ],
+  "cors": {
+    "allowedOrigins": ["*"],
+    "supportCredentials": true
+  }
 }

@@ -90,6 +90,17 @@ plan = azure.web.AppServicePlan(
 # Fetch OpenAI API Token from Pulumi Config
 openai_token = config.require_secret("openaiToken")
 
+# Export the primary key of the Storage Account
+primary_key = (
+    pulumi.Output.all(resource_group.name, account.name)
+    .apply(
+        lambda args: azure.storage.list_storage_account_keys(
+            resource_group_name=args[0], account_name=args[1]
+        )
+    )
+    .apply(lambda accountKeys: accountKeys.keys[0].value)
+)
+
 # Create the Function App.
 app = azure.web.WebApp(
     "app",
@@ -118,12 +129,7 @@ app = azure.web.WebApp(
             ),
             azure.web.NameValuePairArgs(
                 name="AzureWebJobsStorage",
-                value=pulumi.Output.all(resource_group.name, account.name).apply(
-                    lambda args: azure.storage.list_storage_account_keys(
-                        resource_group_name=args[0],
-                        account_name=args[1]
-                    )
-                ).apply(lambda keys: f"DefaultEndpointsProtocol=https;AccountName={account.name};AccountKey={keys.keys[0].value};EndpointSuffix=core.windows.net"),
+                value=pulumi.Output.all(account.name, primary_key).apply(lambda args: f"DefaultEndpointsProtocol=https;AccountName={args[0]};AccountKey={args[1]};EndpointSuffix=core.windows.net"),
             ),
         ],
         cors=azure.web.CorsSettingsArgs(

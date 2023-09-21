@@ -1,4 +1,4 @@
 config:
   azure-native:location: westus2
   t:openaiToken:
-    secure: AAABAFQmrL/8G1B9CwQoqQrBa16pmqaWnw3XZWUnnEbmeGkxk+Ak/JihYjV0+UsOl8OCN9WD7yNVNDQ2cpepmIa+vyeB7dxY7kB6XLysUaQ76SHD
+    secure: AAABAMGPleqpkdHjJjUWUxwBfgq6BMd1vd2VeV7KT413BpbEx2qo02y6SN2NvuK6nifN53F1sH/8S9IRsDowkXnUkWQV+HiNwt0P7OR9JHHy27g=
