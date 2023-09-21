@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Azure Functions Langchain Chatbot</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src *;">
+    <script>
+        var config = {};
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const response = await fetch("config.json");
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch config: ${response.status}`);
+                }
+                config = await response.json();
+            } catch (error) {
+                console.error(`An error occurred while fetching the config: ${error}`);
+            }
+        });
+
+        async function askTheChatbot() {
+            const question = document.querySelector("#questionInput").value;
+            const apiEndpoint = `${config.api}/langchain`;  // Replace 'ChatbotFunction' with your actual function name if different
+            const requestPayload = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ question })
+            };
+
+            try {
+                const response = await fetch(apiEndpoint, requestPayload);
+                if (!response.ok) {
+                    throw new Error(`An error occurred: ${response.status}`);
+                }
+                const data = await response.json();
+                document.querySelector("#answer").textContent = `The chatbot says: ${JSON.stringify(data)}`;
+            } catch (error) {
+                document.querySelector("#answer").textContent = `A network or server error occurred: ${error}`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>🤖 Langchain Chatbot</h1>
+    <p>
+        <label for="questionInput">Ask a question:</label>
+        <input type="text" id="questionInput">
+        <button onclick="askTheChatbot()">Ask the Chatbot</button>
+    </p>
+    <p id="answer"></p>
+    <p>Deployed with 💜 by <a href="https://pulumi.com/templates">Pulumi</a>.</p>
+</body>
+</html>
