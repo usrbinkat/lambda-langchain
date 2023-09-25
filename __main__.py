@@ -1,5 +1,6 @@
 import pulumi
 import pulumi_azure_native as azure
+import pulumi_azure_native.resources as azure_resources
 import pulumi_synced_folder as synced
 
 # Import the program's configuration settings.
@@ -16,9 +17,9 @@ resource_group = azure.resources.ResourceGroup("resource-group")
 account = azure.storage.StorageAccount(
     "account",
     resource_group_name=resource_group.name,
-    kind=azure.storage.Kind.STORAGE_V2,
+    kind="StorageV2",
     sku=azure.storage.SkuArgs(
-        name=azure.storage.SkuName.STANDARD_LRS,
+        name="Standard_LRS",
     ),
 )
 
@@ -64,12 +65,19 @@ sas_token = (
         lambda args: azure.storage.list_storage_account_service_sas(
             resource_group_name=args[0],
             account_name=args[1],
-            protocols=azure.storage.HttpProtocol.HTTPS,
+            protocols="https",
             shared_access_start_time="2022-01-01",
             shared_access_expiry_time="2030-01-01",
-            resource=azure.storage.SignedResource.B,
-            permissions=azure.storage.Permissions.R,
+            resource="b",
+            permissions="r",
             canonicalized_resource=f"/blob/{args[1]}/{args[2]}",
+            content_disposition=None,
+            content_encoding=None,
+            content_language=None,
+            content_type=None,
+            ip=None,
+            key_to_sign=None,
+            cache_control=None,
         )
     )
     .apply(lambda result: result.service_sas_token)
@@ -88,7 +96,7 @@ plan = azure.web.AppServicePlan(
 )
 
 # Fetch OpenAI API Token from Pulumi Config
-openai_token = config.require_secret("openaiToken")
+openai_token = config.get_secret("openaiToken")
 
 # Export the primary key of the Storage Account
 primary_key = (
@@ -138,23 +146,58 @@ app = azure.web.WebApp(
     ),
 )
 
-# Create a JSON configuration file for the website.
-site_config = azure.storage.Blob(
-    "config.json",
-    account_name=account.name,
+## Create an API Management service
+#api_management_service = azure.apimanagement.ApiManagementService(
+#    "api-management-service",
+#    resource_group_name=resource_group.name,
+#    publisher_email="email@yourcompany.com",
+#    publisher_name="yourcompany",
+#    sku=azure_resources.SkuArgs( # The SKU of the Api Management Service
+#        name="Developer",
+#        capacity=1,
+#    ),
+#)
+# Create an API Management service
+api_management_service = azure.apimanagement.ApiManagementService(
+    "api-management-service",
     resource_group_name=resource_group.name,
-    container_name=website.container_name,
-    content_type="application/json",
-    source=app.default_host_name.apply(
-        lambda hostname: pulumi.StringAsset('{ "api": "https://' + hostname + '/api" }')
+    publisher_email="emcee@mlapps.com",
+    publisher_name="mlapps",
+    sku=azure_resources.SkuArgs( # The SKU of the Api Management Service
+        name="Developer",
+        capacity=1,
     ),
+    enable_client_certificate=True,  # Enable client certificate
+)
+
+# Create an API Management API operations
+api_management_api = azure.apimanagement.Api(
+    "api-management-api",
+    resource_group_name=resource_group.name,
+    display_name="API Management API",
+    path="api",
+    protocols=["https"],
+    service_name=api_management_service.name,
+)
+
+# Create a product for the API operations
+product = azure.apimanagement.Product(
+    "product",
+    resource_group_name=resource_group.name,
+    product_id="unlimited",
+    service_name=api_management_service.name,
+    display_name=api_management_service.name,
+)
+
+# Add API to the product
+product_api = azure.apimanagement.ProductApi(
+    "product-api",
+    api_id=api_management_api.api_id,
+    product_id=product.product_id,
+    resource_group_name=resource_group.name,
+    service_name=api_management_service.name,
 )
 
 # Export the URLs of the website and serverless endpoint.
-pulumi.export("siteURL", account.primary_endpoints.web)
-pulumi.export(
-    "apiURL",
-    app.default_host_name.apply(
-        lambda default_host_name: f"https://{default_host_name}/api"
-    ),
-)
+pulumi.export("siteURL", account.primary_endpoints.apply(lambda ep: ep.web))
+pulumi.export("apiManagementURL", api_management_service.gateway_url)
